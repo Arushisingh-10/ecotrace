@@ -16,6 +16,7 @@ import { AnalyzeButton } from "@/components/analyze-button";
 import { LocalDate } from "@/components/local-date";
 import { GenerateAlternativesButton } from "@/components/generate-alternatives-button";
 import { IntentGraph } from "@/components/intent-graph";
+import { DecisionButtons } from "@/components/decision-buttons";
 
 export const instant = false;
 
@@ -41,13 +42,11 @@ export default async function ProjectPage({
 
   const { data: nodes } = await supabase
     .from("graph_nodes")
-    .select("id, type, content , created_at, is_human_authored")
+    .select("id, type, content, created_at, is_human_authored")
     .eq("project_id", id)
     .order("created_at", { ascending: false });
 
-    
-
-    const { data: edges } = await supabase
+  const { data: edges } = await supabase
     .from("graph_edges")
     .select("id, source_id, target_id, relationship")
     .eq("project_id", id);
@@ -60,6 +59,16 @@ export default async function ProjectPage({
   const evidence = ofType("evidence").reverse();
   const assumptions = ofType("assumption").reverse();
   const alternatives = ofType("alternative").reverse();
+  const decisions = ofType("decision");
+
+  // Map: alternative id -> its decision node
+  const decisionByAlt = new Map<string, (typeof decisions)[number]>();
+  (edges ?? [])
+    .filter((e) => e.relationship === "targets")
+    .forEach((e) => {
+      const d = decisions.find((x) => x.id === e.source_id);
+      if (d) decisionByAlt.set(e.target_id, d);
+    });
 
   // Temporary signed links for private images
   const paths = feedback
@@ -80,7 +89,7 @@ export default async function ProjectPage({
     feedback.length > 0,
     problems.length > 0,
     alternatives.length > 0,
-    ofType("decision").length > 0,
+    decisions.length > 0,
     ofType("prototype").length > 0,
     ofType("verification").length > 0,
   ];
@@ -121,7 +130,7 @@ export default async function ProjectPage({
               title="Human Intent Graph"
               icon={<Network className="h-4 w-4" />}
             >
-             <IntentGraph nodes={all} edges={edges ?? []} />
+              <IntentGraph nodes={all} edges={edges ?? []} />
             </Panel>
           </div>
 
@@ -137,52 +146,90 @@ export default async function ProjectPage({
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                {alternatives.map((a) => (
-                  <div
-                    key={a.id}
-                    className="space-y-3 rounded-lg border border-dashed border-amber-500/60 bg-white/5 p-4 text-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-[10px] font-semibold uppercase text-amber-400">
-                        AI proposal · {a.content?.vector}
+                {alternatives.map((a) => {
+                  const decision = decisionByAlt.get(a.id);
+                  const accepted = decision?.content?.status === "accepted";
+                  const rejected = decision?.content?.status === "rejected";
+                  return (
+                    <div
+                      key={a.id}
+                      className={`space-y-3 rounded-lg bg-white/5 p-4 text-sm ${
+                        accepted
+                          ? "border border-solid border-emerald-500"
+                          : rejected
+                          ? "border border-solid border-red-500/60 opacity-70"
+                          : "border border-dashed border-amber-500/60"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[10px] font-semibold uppercase text-amber-400">
+                          AI proposal · {a.content?.vector}
+                        </p>
+                        <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">
+                          {a.content?.implementationComplexity} complexity
+                        </span>
+                      </div>
+                      <p className="font-semibold text-white">
+                        {a.content?.title}
                       </p>
-                      <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">
-                        {a.content?.implementationComplexity} complexity
-                      </span>
-                    </div>
-                    <p className="font-semibold text-white">
-                      {a.content?.title}
-                    </p>
-                    <p className="text-slate-300">
-                      {a.content?.proposedApproach}
-                    </p>
-                    <p className="text-xs text-emerald-300">
-                      Benefit: {a.content?.userBenefit}
-                    </p>
-                    <div>
-                      <p className="text-xs font-semibold text-white">
-                        Trade-offs
+                      <p className="text-slate-300">
+                        {a.content?.proposedApproach}
                       </p>
-                      <ul className="list-disc pl-4 text-xs text-slate-400">
-                        {a.content?.tradeOffs?.map((t: string, i: number) => (
-                          <li key={i}>{t}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-white">
-                        Unsupported assumptions
+                      <p className="text-xs text-emerald-300">
+                        Benefit: {a.content?.userBenefit}
                       </p>
-                      <ul className="list-disc pl-4 text-xs text-slate-400">
-                        {a.content?.unsupportedAssumptions?.map(
-                          (t: string, i: number) => (
+                      <div>
+                        <p className="text-xs font-semibold text-white">
+                          Trade-offs
+                        </p>
+                        <ul className="list-disc pl-4 text-xs text-slate-400">
+                          {a.content?.tradeOffs?.map((t: string, i: number) => (
                             <li key={i}>{t}</li>
-                          )
-                        )}
-                      </ul>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-white">
+                          Unsupported assumptions
+                        </p>
+                        <ul className="list-disc pl-4 text-xs text-slate-400">
+                          {a.content?.unsupportedAssumptions?.map(
+                            (t: string, i: number) => (
+                              <li key={i}>{t}</li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+
+                      {decision ? (
+                        <div
+                          className={`rounded-md p-2 text-xs ${
+                            accepted ? "bg-emerald-500/10" : "bg-red-500/10"
+                          }`}
+                        >
+                          <p
+                            className={`font-semibold uppercase ${
+                              accepted ? "text-emerald-400" : "text-red-400"
+                            }`}
+                          >
+                            {accepted ? "Accepted" : "Rejected"} · Human
+                            decision
+                          </p>
+                          {decision.content?.reason && (
+                            <p className="mt-1 text-slate-300">
+                              Reason: {decision.content.reason}
+                            </p>
+                          )}
+                          <p className="mt-1 text-slate-500">
+                            <LocalDate value={decision.created_at} withTime />
+                          </p>
+                        </div>
+                      ) : (
+                        <DecisionButtons alternativeId={a.id} />
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Panel>
