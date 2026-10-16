@@ -6,6 +6,7 @@ import { FeedbackForm } from "@/components/feedback-form";
 import { LogoutButton } from "@/components/logout-button";
 import { LocalDate } from "@/components/local-date";
 import { Card, CardContent, CardDescription } from "@/components/ui/card";
+import { AnalyzeButton } from "@/components/analyze-button";
 export const instant = false;
 
 export default async function ProjectPage({
@@ -50,6 +51,16 @@ export default async function ProjectPage({
       if (s.path && s.signedUrl) urlMap.set(s.path, s.signedUrl);
     });
   }
+    const { data: aiNodes } = await supabase
+    .from("graph_nodes")
+    .select("id, type, content")
+    .eq("project_id", id)
+    .in("type", ["problem", "evidence", "assumption"])
+    .order("created_at", { ascending: true });
+
+  const problems = aiNodes?.filter((n) => n.type === "problem") ?? [];
+  const evidence = aiNodes?.filter((n) => n.type === "evidence") ?? [];
+  const assumptions = aiNodes?.filter((n) => n.type === "assumption") ?? [];
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -88,6 +99,7 @@ export default async function ProjectPage({
               Abhi koi feedback nahi hai.
             </p>
           )}
+          
 
           <div className="space-y-4">
             {feedback?.map((f) => {
@@ -111,12 +123,67 @@ export default async function ProjectPage({
                         className="max-h-64 w-full rounded-md border object-contain"
                       />
                     )}
+                    <AnalyzeButton feedbackId={f.id} />
                   </CardContent>
                 </Card>
               );
             })}
           </div>
         </section>
+                {problems.length > 0 && (
+          <section className="space-y-4 lg:col-span-2">
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+              AI Analysis (hypothesis, verified fact nahi)
+            </h2>
+
+            {problems.map((p) => (
+              <Card key={p.id} className="border-dashed border-amber-600">
+                <CardContent className="space-y-1">
+                  <p className="text-xs font-medium uppercase text-amber-700">
+                    AI Problem
+                  </p>
+                  <p className="font-semibold text-slate-900">
+                    {p.content?.title}
+                  </p>
+                  <p className="text-sm text-slate-700">
+                    {p.content?.description}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Evidence
+                </h3>
+                {evidence.map((e) => (
+                  <Card key={e.id}>
+                    <CardContent className="space-y-1 text-sm">
+                      <p className="italic text-slate-800">
+                        &ldquo;{e.content?.quote}&rdquo;
+                      </p>
+                      <p className="text-slate-600">{e.content?.observation}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Unsupported assumptions
+                </h3>
+                {assumptions.map((a) => (
+                  <Card key={a.id} className="border-dashed border-amber-600">
+                    <CardContent className="text-sm text-slate-700">
+                      {a.content?.text}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
