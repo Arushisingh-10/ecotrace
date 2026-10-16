@@ -15,6 +15,7 @@ import { FeedbackForm } from "@/components/feedback-form";
 import { AnalyzeButton } from "@/components/analyze-button";
 import { LocalDate } from "@/components/local-date";
 import { GenerateAlternativesButton } from "@/components/generate-alternatives-button";
+import { IntentGraph } from "@/components/intent-graph";
 
 export const instant = false;
 
@@ -40,9 +41,16 @@ export default async function ProjectPage({
 
   const { data: nodes } = await supabase
     .from("graph_nodes")
-    .select("id, type, content, created_at")
+    .select("id, type, content , created_at, is_human_authored")
     .eq("project_id", id)
     .order("created_at", { ascending: false });
+
+    
+
+    const { data: edges } = await supabase
+    .from("graph_edges")
+    .select("id, source_id, target_id, relationship")
+    .eq("project_id", id);
 
   const all = nodes ?? [];
   const ofType = (t: string) => all.filter((n) => n.type === t);
@@ -113,9 +121,7 @@ export default async function ProjectPage({
               title="Human Intent Graph"
               icon={<Network className="h-4 w-4" />}
             >
-              <div className="flex min-h-[260px] items-center justify-center rounded-lg border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">
-                Interactive graph view is coming soon.
-              </div>
+             <IntentGraph nodes={all} edges={edges ?? []} />
             </Panel>
           </div>
 
