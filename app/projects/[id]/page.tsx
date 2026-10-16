@@ -17,6 +17,7 @@ import { LocalDate } from "@/components/local-date";
 import { GenerateAlternativesButton } from "@/components/generate-alternatives-button";
 import { IntentGraph } from "@/components/intent-graph";
 import { DecisionButtons } from "@/components/decision-buttons";
+import { ReplaceButton } from "@/components/replace-button";
 
 export const instant = false;
 
@@ -69,6 +70,13 @@ export default async function ProjectPage({
       const d = decisions.find((x) => x.id === e.source_id);
       if (d) decisionByAlt.set(e.target_id, d);
     });
+
+  // Alternatives that already have a replacement
+  const replacedIds = new Set(
+    (edges ?? [])
+      .filter((e) => e.relationship === "revises")
+      .map((e) => e.target_id)
+  );
 
   // Temporary signed links for private images
   const paths = feedback
@@ -218,6 +226,14 @@ export default async function ProjectPage({
                           {decision.content?.reason && (
                             <p className="mt-1 text-slate-300">
                               Reason: {decision.content.reason}
+                            </p>
+                          )}
+                          {rejected && !replacedIds.has(a.id) && (
+                            <ReplaceButton alternativeId={a.id} />
+                          )}
+                          {rejected && replacedIds.has(a.id) && (
+                            <p className="mt-1 text-slate-400">
+                              Replacement generated.
                             </p>
                           )}
                           <p className="mt-1 text-slate-500">
