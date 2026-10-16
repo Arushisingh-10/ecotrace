@@ -19,9 +19,9 @@ export function AnalyzeButton({ feedbackId }: { feedbackId: string }) {
   return (
     <div className="space-y-1">
       <Button size="sm" onClick={handleClick} disabled={loading}>
-        {loading ? "AI analyze kar raha hai..." : "Analyze with AI"}
+        {loading ? "Analyzing..." : "Analyze with AI"}
       </Button>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }

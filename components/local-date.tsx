@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export function LocalDate({
   value,
   withTime = false,
@@ -7,12 +9,14 @@ export function LocalDate({
   value: string;
   withTime?: boolean;
 }) {
-  const d = new Date(value);
-  return (
-    <span suppressHydrationWarning>
-      {withTime
-        ? d.toLocaleString("en-IN")
-        : d.toLocaleDateString("en-IN")}
-    </span>
-  );
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    const d = new Date(value);
+    setText(
+      withTime ? d.toLocaleString("en-IN") : d.toLocaleDateString("en-IN")
+    );
+  }, [value, withTime]);
+
+  return <span suppressHydrationWarning>{text}</span>;
 }

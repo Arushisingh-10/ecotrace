@@ -21,12 +21,12 @@ export function FeedbackForm({ projectId }: { projectId: string }) {
     const f = e.target.files?.[0] ?? null;
     setError("");
     if (f && !ALLOWED.includes(f.type)) {
-      setError("Sirf PNG ya JPEG image allowed hai.");
+      setError("Only PNG or JPEG images are allowed.");
       e.target.value = "";
       return setFile(null);
     }
     if (f && f.size > MAX_SIZE) {
-      setError("Image 5MB se chhoti honi chahiye.");
+      setError("Image must be smaller than 5 MB.");
       e.target.value = "";
       return setFile(null);
     }
@@ -44,7 +44,7 @@ export function FeedbackForm({ projectId }: { projectId: string }) {
     } = await supabase.auth.getUser();
     if (!user) {
       setLoading(false);
-      return setError("Login expire ho gaya. Dobara login karo.");
+      return setError("Your session has expired. Please log in again.");
     }
 
     let imagePath: string | null = null;
@@ -57,7 +57,7 @@ export function FeedbackForm({ projectId }: { projectId: string }) {
         .upload(imagePath, file, { contentType: file.type });
       if (upErr) {
         setLoading(false);
-        return setError("Image upload fail: " + upErr.message);
+        return setError("Image upload failed: " + upErr.message);
       }
     }
 
@@ -81,7 +81,7 @@ export function FeedbackForm({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-3">
       <Textarea
-        placeholder="Customer ka feedback yahan paste karo (jaise: The pricing page is confusing, I don't know which plan fits.)"
+        placeholder="Paste customer feedback here (e.g. The pricing page is confusing, I don't know which plan fits my team.)"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={5}
@@ -92,17 +92,17 @@ export function FeedbackForm({ projectId }: { projectId: string }) {
         accept="image/png,image/jpeg"
         onChange={handleFile}
       />
-      <p className="text-xs text-slate-500">
-        Optional screenshot: PNG ya JPEG, max 5MB.
+      <p className="text-xs text-slate-400">
+        Optional screenshot. PNG or JPEG, up to 5 MB.
       </p>
       <Button
         onClick={handleSubmit}
         disabled={loading || !text.trim()}
         className="w-full sm:w-auto"
       >
-        {loading ? "Saving..." : "Feedback save karo"}
+        {loading ? "Saving..." : "Save feedback"}
       </Button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
     </div>
   );
 }

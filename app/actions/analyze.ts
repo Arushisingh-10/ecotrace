@@ -10,18 +10,18 @@ export async function analyzeFeedback(feedbackId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Login karo." };
+  if (!user) return { error: "Please log in to continue." };
 
-  // RLS ki wajah se sirf apna feedback milega
+  // RLS ensures users can only read their own feedback
   const { data: fb } = await supabase
     .from("graph_nodes")
     .select("id, project_id, content")
     .eq("id", feedbackId)
     .eq("type", "feedback")
     .single();
-  if (!fb) return { error: "Feedback nahi mila." };
+  if (!fb) return { error: "Feedback not found." };
 
-  // Pehle se analyze ho chuka hai?
+  // Already analyzed?
   const { data: existing } = await supabase
     .from("graph_edges")
     .select("id")
@@ -29,10 +29,10 @@ export async function analyzeFeedback(feedbackId: string) {
     .eq("relationship", "derived_from")
     .limit(1);
   if (existing && existing.length > 0) {
-    return { error: "Ye feedback pehle hi analyze ho chuka hai." };
+    return { error: "This feedback has already been analyzed." };
   }
 
-  // Image (agar hai) download karke Gemini ko bhejo
+  // Download the screenshot (if any) and pass it to the model
   let image: { data: string; mimeType: string } | undefined;
   const imagePath = fb.content?.image_path as string | null;
   if (imagePath) {
@@ -63,7 +63,7 @@ export async function analyzeFeedback(feedbackId: string) {
     })
     .select("id")
     .single();
-  if (pErr || !problemNode) return { error: "Problem node save nahi hua." };
+  if (pErr || !problemNode) return { error: "Failed to save the problem." };
 
   // Evidence nodes
   const evidenceRows = result.evidence.map((e) => ({
@@ -76,7 +76,7 @@ export async function analyzeFeedback(feedbackId: string) {
     .from("graph_nodes")
     .insert(evidenceRows)
     .select("id");
-  if (eErr || !evNodes) return { error: "Evidence save nahi hua." };
+  if (eErr || !evNodes) return { error: "Failed to save the evidence." };
 
   // Assumption nodes
   let asNodes: { id: string }[] = [];
@@ -95,8 +95,6 @@ export async function analyzeFeedback(feedbackId: string) {
     asNodes = data ?? [];
   }
 
-  // Edges: feedback -> evidence (supports), evidence -> problem (supports),
-  // problem -> feedback (derived_from), assumption -> problem (assumed_by)
   const edges = [
     {
       project_id: fb.project_id,
@@ -118,7 +116,7 @@ export async function analyzeFeedback(feedbackId: string) {
     })),
   ];
   const { error: edgeErr } = await supabase.from("graph_edges").insert(edges);
-  if (edgeErr) return { error: "Edges save nahi hue." };
+  if (edgeErr) return { error: "Failed to save graph connections." };
 
   revalidatePath(`/projects/${fb.project_id}`);
   return { ok: true };

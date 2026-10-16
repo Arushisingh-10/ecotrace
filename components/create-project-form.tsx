@@ -33,7 +33,7 @@ export function CreateProjectForm() {
     <div className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input
-          placeholder="Project ka naam (jaise: Pricing Page Feedback)"
+          placeholder="Project name (e.g. Pricing Page Feedback)"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
@@ -47,7 +47,7 @@ export function CreateProjectForm() {
           {loading ? "Creating..." : "Create project"}
         </Button>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
     </div>
   );
 }

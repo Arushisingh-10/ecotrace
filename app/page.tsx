@@ -1,21 +1,14 @@
 import Link from "next/link";
-import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { LogoutButton } from "@/components/logout-button";
+import { AppShell } from "@/components/app-shell";
+import { Panel } from "@/components/panel";
 import { CreateProjectForm } from "@/components/create-project-form";
 import { LocalDate } from "@/components/local-date";
+
 export const instant = false;
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export default async function Home() {
-  await connection();
   const supabase = await createClient();
 
   const {
@@ -29,70 +22,44 @@ export default async function Home() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold text-slate-900 sm:text-xl">
-              EchoTrace
-            </h1>
-            <p className="hidden text-xs text-slate-500 sm:block">
-              The Human Intent Graph System
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden max-w-[200px] truncate text-sm text-slate-600 md:block">
-              {user.email}
-            </span>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
-
-      {/* Main */}
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-            Naya project banao
-          </h2>
+    <AppShell email={user.email ?? ""}>
+      <div className="space-y-6">
+        <Panel title="Create a new project">
           <CreateProjectForm />
-        </section>
+        </Panel>
 
         <section className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
-            Aapke projects
+          <h2 className="text-base font-semibold text-white sm:text-lg">
+            Your projects ({projects?.length ?? 0})
           </h2>
 
           {error && (
-            <p className="text-sm text-red-600">Error: {error.message}</p>
+            <p className="text-sm text-red-400">Error: {error.message}</p>
           )}
 
           {projects && projects.length === 0 && (
-            <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-              Abhi koi project nahi hai. Upar se pehla project banao.
+            <p className="rounded-xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">
+              No projects yet. Create your first project above.
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {projects?.map((p) => (
               <Link key={p.id} href={`/projects/${p.id}`}>
-                <Card className="h-full transition hover:shadow-md">
-                  <CardHeader>
-                    <CardTitle className="truncate">{p.name}</CardTitle>
-                    <CardDescription>
-                      <LocalDate value={p.created_at} />
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-sm text-slate-500">
-                    Feedback add karne ke liye kholo.
-                  </CardContent>
-                </Card>
+                <div className="h-full rounded-xl border border-white/10 bg-[#0e1530]/80 p-4 transition hover:border-violet-500/60 hover:bg-[#131c40]">
+                  <p className="truncate font-semibold text-white">{p.name}</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Created <LocalDate value={p.created_at} />
+                  </p>
+                  <p className="mt-3 text-sm text-slate-400">
+                    Open project →
+                  </p>
+                </div>
               </Link>
             ))}
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

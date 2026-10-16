@@ -20,13 +20,16 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) return setMessage(error.message);
-    setMessage("Account ban gaya. Ab Log in dabao.");
+    setMessage("Account created. You can now log in.");
   }
 
   async function handleLogin() {
     setLoading(true);
     setMessage("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     setLoading(false);
     if (error) return setMessage(error.message);
     router.push("/");
@@ -34,29 +37,51 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto mt-12 w-full max-w-sm space-y-4 p-4 sm:mt-24 sm:p-6">
-      <h1 className="text-2xl font-bold text-slate-900">EchoTrace Login</h1>
-      <Input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <Input
-        type="password"
-        placeholder="Password (min 6 characters)"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button onClick={handleLogin} disabled={loading}>
-          Log in
-        </Button>
-        <Button variant="outline" onClick={handleSignUp} disabled={loading}>
-          Sign up
-        </Button>
-      </div>
-      {message && <p className="text-sm text-slate-600">{message}</p>}
-    </main>
+    <div className="flex min-h-screen items-center justify-center bg-[#070b17] p-4">
+      <main className="w-full max-w-sm space-y-5 rounded-xl border border-white/10 bg-[#0e1530]/80 p-6 sm:p-8">
+        <div>
+          <h1 className="text-2xl font-bold text-white">EchoTrace</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Sign in to your workspace
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <Input
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Input
+            type="password"
+            placeholder="Password (minimum 6 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            onClick={handleLogin}
+            disabled={loading}
+            className="w-full sm:flex-1"
+          >
+            Log in
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSignUp}
+            disabled={loading}
+            className="w-full sm:flex-1"
+          >
+            Sign up
+          </Button>
+        </div>
+
+        {message && <p className="text-sm text-slate-300">{message}</p>}
+      </main>
+    </div>
   );
 }

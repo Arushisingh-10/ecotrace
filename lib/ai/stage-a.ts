@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
-const MODEL = "gemini-3.8-flash";
+import { MODEL_FAST } from "@/lib/ai/config";
 
 export const StageASchema = z.object({
   problem: z.object({
@@ -75,7 +75,7 @@ export async function runStageA(
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await ai.models.generateContent({
-        model: MODEL,
+        model: MODEL_FAST,
         contents: [{ role: "user", parts }],
         config: {
           systemInstruction: SYSTEM_PROMPT,
@@ -91,5 +91,5 @@ export async function runStageA(
     }
   }
   console.error("Stage A failed:", lastError);
-  throw new Error("AI analysis fail ho gaya. Thodi der baad dobara try karo.");
+  throw new Error("AI analysis failed. Please try again in a moment.");
 }
