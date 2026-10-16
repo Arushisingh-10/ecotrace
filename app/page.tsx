@@ -1,7 +1,11 @@
+import Link from "next/link";
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
 import { CreateProjectForm } from "@/components/create-project-form";
+import { LocalDate } from "@/components/local-date";
+export const instant = false;
 import {
   Card,
   CardContent,
@@ -11,6 +15,7 @@ import {
 } from "@/components/ui/card";
 
 export default async function Home() {
+  await connection();
   const supabase = await createClient();
 
   const {
@@ -71,17 +76,19 @@ export default async function Home() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects?.map((p) => (
-              <Card key={p.id} className="transition hover:shadow-md">
-                <CardHeader>
-                  <CardTitle className="truncate">{p.name}</CardTitle>
-                  <CardDescription>
-                    {new Date(p.created_at).toLocaleDateString("en-IN")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-sm text-slate-500">
-                  Feedback aur graph yahan aayenge (Day 3 se).
-                </CardContent>
-              </Card>
+              <Link key={p.id} href={`/projects/${p.id}`}>
+                <Card className="h-full transition hover:shadow-md">
+                  <CardHeader>
+                    <CardTitle className="truncate">{p.name}</CardTitle>
+                    <CardDescription>
+                      <LocalDate value={p.created_at} />
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-sm text-slate-500">
+                    Feedback add karne ke liye kholo.
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </section>
