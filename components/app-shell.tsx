@@ -2,21 +2,15 @@ import Link from "next/link";
 import {
   Home,
   FolderKanban,
-  Network,
-  LayoutTemplate,
-  ShieldCheck,
-  Settings,
 } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 
 const NAV = [
+
   { label: "Home", href: "/", icon: Home },
   { label: "Projects", href: "/", icon: FolderKanban },
-  { label: "Graph View", icon: Network },
-  { label: "Prototypes", icon: LayoutTemplate },
-  { label: "Verification", icon: ShieldCheck },
-  { label: "Settings", icon: Settings },
 ];
+
 
 function Logo() {
   return (
