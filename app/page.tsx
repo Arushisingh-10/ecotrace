@@ -6,7 +6,7 @@ import { Panel } from "@/components/panel";
 import { CreateProjectForm } from "@/components/create-project-form";
 import { LocalDate } from "@/components/local-date";
 
-export const instant = false;
+// export const instant = false;
 
 export default async function Home() {
   const supabase = await createClient();
