@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EchoTrace: The Human Intent Graph System
 
-## Getting Started
+EchoTrace turns raw customer feedback into traceable, evidence-backed product
+improvements. AI acts as an analyst that proposes bounded alternatives. Humans
+make every decision, and every step stays linked back to the original feedback.
 
-First, run the development server:
+**Live demo:** https://ecotracee2.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Features
+
+- Feedback ingestion (text and PNG/JPEG screenshots, max 5 MB)
+- AI evidence extraction (problem, evidence, unsupported assumptions)
+- Three structurally different solution alternatives
+- Human Accept / Reject workflow with required rejection reasons
+- Rejection-aware replacement generation
+- Interactive Human Intent Graph (React Flow), including a full-screen Graph View
+- Safe prototype renderer (allowlisted components, no eval or raw HTML)
+- Deterministic verification (ARIA labels, structure, contrast, safety limits)
+- Project deletion with full cleanup (nodes, edges, prototypes, screenshots)
+
+## Tech stack
+
+Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, Supabase (Postgres,
+Auth, Storage, Row Level Security), Gemini API, React Flow, Zod.
+
+## How it works
+
+Feedback -> AI Analysis -> 3 Alternatives -> Human Decision -> Prototype -> Verification
+
+1. **Feedback:** a user pastes customer feedback and an optional screenshot.
+2. **AI Analysis:** Gemini extracts the core problem, supporting evidence and
+   unsupported assumptions. These are shown as hypotheses, not facts.
+3. **Alternatives:** Gemini proposes three fundamentally different solutions
+   with trade-offs and assumptions.
+4. **Human Decision:** the user accepts or rejects. Rejections require a
+   reason, and the AI can generate a replacement that respects it.
+5. **Prototype:** an accepted alternative becomes a validated JSON component
+   tree, rendered through an allowlist.
+6. **Verification:** deterministic server-side checks. No AI is involved.
+
+In the graph, dashed borders mark AI hypotheses and solid borders mark human
+decisions.
+
+## Local setup
+
+
+1. Clone the repo and run `npm install`
+2. Create a `.env.local` file in the project root:
+
+```
+   NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-publishable-key
+   GEMINI_API_KEY=your-gemini-api-key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Run the SQL in `supabase/migrations/001_init.sql` (tables, RLS policies,
+   storage bucket)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Run `npm run dev` and open http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Security
 
-## Learn More
+- The Gemini key is server-side only and never reaches the browser
+- Row Level Security isolates each user's data
+- AI output is validated with Zod and never executed as code
+- The prototype renderer accepts only allowlisted components and props
+- Uploads are limited to PNG/JPEG, 5 MB, in a private storage bucket
+- Feedback is treated as untrusted data in every AI prompt
 
-To learn more about Next.js, take a look at the following resources:
+## Known limitations
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- AI pipeline writes are multiple inserts, not a single transaction. A failure
+  midway can leave partial data.
+- Re-analyzing the same feedback creates duplicate problem and evidence nodes.
+- Graph layout is automatic. Node positions are not saved after dragging.
+- Stages B and C use the same Flash model. A Pro model was not configured.
+- Verification checks structure, ARIA labels and the renderer's fixed color
+  contrast. It does not run a real browser (Playwright was deferred).
+- No team features or role-based access. Each project has one owner.
+- Prototypes are low fidelity and may contain placeholder content. They do not
+  prove business impact without user testing.
+- The Gemini API can return temporary 503 errors under high demand. Retrying
+  after a short wait resolves it.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deferred (future work)
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Playwright end-to-end tests and Vitest unit tests
+- Team RBAC and SSO
+- Saving graph layout
+- Voice note transcription
