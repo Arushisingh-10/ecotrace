@@ -6,6 +6,7 @@ import {
   Lightbulb,
   MessageSquare,
   FileText,
+  LayoutTemplate,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -18,6 +19,9 @@ import { GenerateAlternativesButton } from "@/components/generate-alternatives-b
 import { IntentGraph } from "@/components/intent-graph";
 import { DecisionButtons } from "@/components/decision-buttons";
 import { ReplaceButton } from "@/components/replace-button";
+import { GeneratePrototypeButton } from "@/components/generate-prototype-button";
+import { DynamicRenderer } from "@/components/dynamic-renderer";
+
 
 export const instant = false;
 
@@ -61,6 +65,12 @@ export default async function ProjectPage({
   const assumptions = ofType("assumption").reverse();
   const alternatives = ofType("alternative").reverse();
   const decisions = ofType("decision");
+    const prototypes = ofType("prototype").reverse();
+  const protoDecisionIds = new Set(
+    (edges ?? [])
+      .filter((e) => e.relationship === "generated_from")
+      .map((e) => e.target_id)
+  );
 
   // Map: alternative id -> its decision node
   const decisionByAlt = new Map<string, (typeof decisions)[number]>();
@@ -158,6 +168,14 @@ export default async function ProjectPage({
                   const decision = decisionByAlt.get(a.id);
                   const accepted = decision?.content?.status === "accepted";
                   const rejected = decision?.content?.status === "rejected";
+                        {accepted && !protoDecisionIds.has(decision!.id) && (
+                           <GeneratePrototypeButton decisionId={decision!.id} />
+                          )}
+                          {accepted && protoDecisionIds.has(decision!.id) && (
+                            <p className="mt-1 text-slate-400">
+                              Prototype generated.
+                            </p>
+                          )}
                   return (
                     <div
                       key={a.id}
@@ -168,6 +186,7 @@ export default async function ProjectPage({
                           ? "border border-solid border-red-500/60 opacity-70"
                           : "border border-dashed border-amber-500/60"
                       }`}
+                      
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-[10px] font-semibold uppercase text-amber-400">
@@ -246,6 +265,37 @@ export default async function ProjectPage({
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </Panel>
+
+
+                    {/* Prototype preview */}
+          <Panel
+            title="Prototype Preview"
+            icon={<LayoutTemplate className="h-4 w-4 text-cyan-400" />}
+          >
+            {prototypes.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">
+                Accept an alternative, then select &ldquo;Generate
+                prototype&rdquo; to preview it here.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {prototypes.map((pr) => (
+                  <div key={pr.id} className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase text-cyan-400">
+                      AI-generated prototype · {pr.content?.title}
+                    </p>
+                    <div className="rounded-lg border border-dashed border-cyan-500/50 bg-slate-100 p-4">
+                      <DynamicRenderer data={pr.content?.component_schema} />
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Low-fidelity preview rendered from validated JSON. It does
+                      not prove business impact without user testing.
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
           </Panel>
