@@ -9,7 +9,6 @@ import {
   LayoutTemplate,
   ShieldCheck,
 } from "lucide-react";
-import { VerifyButton } from "@/components/verify-button";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Panel } from "@/components/panel";
@@ -22,10 +21,9 @@ import { IntentGraph } from "@/components/intent-graph";
 import { DecisionButtons } from "@/components/decision-buttons";
 import { ReplaceButton } from "@/components/replace-button";
 import { GeneratePrototypeButton } from "@/components/generate-prototype-button";
+import { VerifyButton } from "@/components/verify-button";
 import { DynamicRenderer } from "@/components/dynamic-renderer";
-
-
-// export const instant = false;
+import { DeleteProjectButton } from "@/components/delete-project-button";
 
 export default async function ProjectPage({
   params,
@@ -68,22 +66,9 @@ export default async function ProjectPage({
   const alternatives = ofType("alternative").reverse();
   const decisions = ofType("decision");
   const prototypes = ofType("prototype").reverse();
-
   const verifications = ofType("verification");
-  const verificationByProto = new Map<string, (typeof verifications)[number]>();
-  (edges ?? [])
-    .filter((e) => e.relationship === "verifies")
-    .forEach((e) => {
-      const v = verifications.find((x) => x.id === e.source_id);
-      if (v) verificationByProto.set(e.target_id, v);
-    });
-  const protoDecisionIds = new Set(
-    (edges ?? [])
-      .filter((e) => e.relationship === "generated_from")
-      .map((e) => e.target_id)
-  );
 
-  // Map: alternative id -> its decision node
+  // alternative id -> its decision node
   const decisionByAlt = new Map<string, (typeof decisions)[number]>();
   (edges ?? [])
     .filter((e) => e.relationship === "targets")
@@ -92,12 +77,28 @@ export default async function ProjectPage({
       if (d) decisionByAlt.set(e.target_id, d);
     });
 
-  // Alternatives that already have a replacement
+  // alternatives that already have a replacement
   const replacedIds = new Set(
     (edges ?? [])
       .filter((e) => e.relationship === "revises")
       .map((e) => e.target_id)
   );
+
+  // decisions that already have a prototype
+  const protoDecisionIds = new Set(
+    (edges ?? [])
+      .filter((e) => e.relationship === "generated_from")
+      .map((e) => e.target_id)
+  );
+
+  // prototype id -> verification node
+  const verificationByProto = new Map<string, (typeof verifications)[number]>();
+  (edges ?? [])
+    .filter((e) => e.relationship === "verifies")
+    .forEach((e) => {
+      const v = verifications.find((x) => x.id === e.source_id);
+      if (v) verificationByProto.set(e.target_id, v);
+    });
 
   // Temporary signed links for private images
   const paths = feedback
@@ -113,14 +114,13 @@ export default async function ProjectPage({
     });
   }
 
-  // Step status derived from real data
   const done = [
     feedback.length > 0,
     problems.length > 0,
     alternatives.length > 0,
     decisions.length > 0,
-    ofType("prototype").length > 0,
-    ofType("verification").length > 0,
+    prototypes.length > 0,
+    verifications.length > 0,
   ];
   const completed = done.filter(Boolean).length;
   const latest = feedback[0];
@@ -142,6 +142,13 @@ export default async function ProjectPage({
               <span className="rounded-full bg-blue-500/20 px-3 py-0.5 text-xs text-blue-300">
                 {completed === 6 ? "Completed" : "In progress"}
               </span>
+                            <div className="ml-auto">
+                <DeleteProjectButton
+                  projectId={project.id}
+                  projectName={project.name}
+                  redirectTo="/"
+                />
+              </div>
             </div>
             {latest && (
               <p className="mt-3 border-l-2 border-violet-500 pl-3 text-sm italic text-slate-300">
@@ -155,9 +162,17 @@ export default async function ProjectPage({
             <Panel title="Progress">
               <StepsList done={done} />
             </Panel>
-            <Panel
+                <Panel
               title="Human Intent Graph"
               icon={<Network className="h-4 w-4" />}
+              action={
+                <Link
+                  href={`/projects/${project.id}/graph`}
+                  className="text-xs text-violet-300 hover:text-white"
+                >
+                  Open full view →
+                </Link>
+              }
             >
               <IntentGraph nodes={all} edges={edges ?? []} />
             </Panel>
@@ -179,14 +194,6 @@ export default async function ProjectPage({
                   const decision = decisionByAlt.get(a.id);
                   const accepted = decision?.content?.status === "accepted";
                   const rejected = decision?.content?.status === "rejected";
-                        {accepted && !protoDecisionIds.has(decision!.id) && (
-                           <GeneratePrototypeButton decisionId={decision!.id} />
-                          )}
-                          {accepted && protoDecisionIds.has(decision!.id) && (
-                            <p className="mt-1 text-slate-400">
-                              Prototype generated.
-                            </p>
-                          )}
                   return (
                     <div
                       key={a.id}
@@ -197,7 +204,6 @@ export default async function ProjectPage({
                           ? "border border-solid border-red-500/60 opacity-70"
                           : "border border-dashed border-amber-500/60"
                       }`}
-                      
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-[10px] font-semibold uppercase text-amber-400">
@@ -266,6 +272,14 @@ export default async function ProjectPage({
                               Replacement generated.
                             </p>
                           )}
+                          {accepted && !protoDecisionIds.has(decision.id) && (
+                            <GeneratePrototypeButton decisionId={decision.id} />
+                          )}
+                          {accepted && protoDecisionIds.has(decision.id) && (
+                            <p className="mt-1 text-slate-400">
+                              Prototype generated.
+                            </p>
+                          )}
                           <p className="mt-1 text-slate-500">
                             <LocalDate value={decision.created_at} withTime />
                           </p>
@@ -280,79 +294,86 @@ export default async function ProjectPage({
             )}
           </Panel>
 
-
-                    {/* Prototype preview */}
+          {/* Prototype Preview */}
           <Panel
-  title="Prototype Preview"
-  icon={<LayoutTemplate className="h-4 w-4 text-cyan-400" />}
->
-  {prototypes.length === 0 ? (
-    <div className="rounded-lg border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">
-      Accept an alternative, then select &ldquo;Generate prototype&rdquo; to
-      preview it here.
-    </div>
-  ) : (
-    <div className="space-y-6">
-      {prototypes.map((pr) => {
-        const v = verificationByProto.get(pr.id);
-        return (
-          <div key={pr.id} className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase text-cyan-400">
-              AI-generated prototype · {pr.content?.title}
-            </p>
-
-            <div className="rounded-lg border border-dashed border-cyan-500/50 bg-slate-100 p-4">
-              <DynamicRenderer data={pr.content?.component_schema} />
-            </div>
-
-            <p className="text-xs text-slate-500">
-              Low-fidelity preview rendered from validated JSON. It does not
-              prove business impact without user testing.
-            </p>
-
-            {!v ? (
-              <VerifyButton prototypeId={pr.id} />
+            title="Prototype Preview"
+            icon={<LayoutTemplate className="h-4 w-4 text-cyan-400" />}
+          >
+            {prototypes.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">
+                Accept an alternative, then select &ldquo;Generate
+                prototype&rdquo; to preview it here.
+              </div>
             ) : (
-              <div className="space-y-2 rounded-lg border border-white/10 bg-white/5 p-3">
-                <p className="flex items-center gap-2 text-sm font-semibold text-white">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                  Verification: {v.content?.passed}/{v.content?.total} checks
-                  passed
-                </p>
-                <ul className="space-y-1 text-xs">
-                  {v.content?.checks?.map(
-                    (
-                      c: { name: string; passed: boolean; detail: string },
-                      i: number
-                    ) => (
-                      <li key={i} className="flex gap-2">
-                        <span
-                          className={
-                            c.passed ? "text-emerald-400" : "text-red-400"
-                          }
-                        >
-                          {c.passed ? "Passed" : "Failed"}
-                        </span>
-                        <span className="text-slate-300">
-                          <strong className="text-white">{c.name}.</strong>{" "}
-                          {c.detail}
-                        </span>
-                      </li>
-                    )
-                  )}
-                </ul>
-                <p className="text-[10px] text-slate-500">
-                  Deterministic checks run by the server, not inferred by the
-                  AI.
-                </p>
+              <div className="space-y-6">
+                {prototypes.map((pr) => {
+                  const v = verificationByProto.get(pr.id);
+                  return (
+                    <div key={pr.id} className="space-y-2">
+                      <p className="text-[10px] font-semibold uppercase text-cyan-400">
+                        AI-generated prototype · {pr.content?.title}
+                      </p>
+
+                      <div className="rounded-lg border border-dashed border-cyan-500/50 bg-slate-100 p-4">
+                        <DynamicRenderer data={pr.content?.component_schema} />
+                      </div>
+
+                      <p className="text-xs text-slate-500">
+                        Low-fidelity preview rendered from validated JSON. It
+                        does not prove business impact without user testing.
+                      </p>
+
+                      {!v ? (
+                        <VerifyButton prototypeId={pr.id} />
+                      ) : (
+                        <div className="space-y-2 rounded-lg border border-white/10 bg-white/5 p-3">
+                          <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                            <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                            Verification: {v.content?.passed}/{v.content?.total}{" "}
+                            checks passed
+                          </p>
+                          <ul className="space-y-1 text-xs">
+                            {v.content?.checks?.map(
+                              (
+                                c: {
+                                  name: string;
+                                  passed: boolean;
+                                  detail: string;
+                                },
+                                i: number
+                              ) => (
+                                <li key={i} className="flex gap-2">
+                                  <span
+                                    className={
+                                      c.passed
+                                        ? "text-emerald-400"
+                                        : "text-red-400"
+                                    }
+                                  >
+                                    {c.passed ? "Passed" : "Failed"}
+                                  </span>
+                                  <span className="text-slate-300">
+                                    <strong className="text-white">
+                                      {c.name}.
+                                    </strong>{" "}
+                                    {c.detail}
+                                  </span>
+                                </li>
+                              )
+                            )}
+                          </ul>
+                          <p className="text-[10px] text-slate-500">
+                            Deterministic checks run by the server, not
+                            inferred by the AI.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </div>
-        );
-      })}
-    </div>
-  )}
-</Panel>
+          </Panel>
 
           {/* Feedback */}
           <div className="grid gap-4 md:grid-cols-2">

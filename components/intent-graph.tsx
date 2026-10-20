@@ -87,9 +87,11 @@ const LAYER: Record<string, number> = {
 export function IntentGraph({
   nodes,
   edges,
+  height = 460,
 }: {
   nodes: GNode[];
   edges: GEdge[];
+  height?: number | string;
 }) {
   const [selected, setSelected] = useState<GNode | null>(null);
 
@@ -141,7 +143,10 @@ export function IntentGraph({
 
   return (
     <div className="space-y-3">
-      <div className="h-[460px] rounded-lg border border-white/10 bg-[#070b17]">
+        <div
+        style={{ height }}
+        className="rounded-lg border border-white/10 bg-[#070b17]"
+      >
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}

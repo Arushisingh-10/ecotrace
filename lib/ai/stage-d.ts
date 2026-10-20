@@ -15,7 +15,46 @@ Rules:
 - Every Button and Input MUST have an ariaLabel.
 - All strings under 300 characters, plain text only. No HTML, no code, no URLs to scripts.
 - Do not use any prop or type outside the allowed lists.
-- Design a realistic mini-screen that demonstrates the accepted solution.`;
+- Design a realistic mini-screen that demonstrates the accepted solution.
+- Output raw JSON only. No markdown fences, no commentary.
+- Do NOT include any keys other than "type", "props" and "children".
+- "level" must be the number 1, 2 or 3 (not a string).
+- Omit "props" or "children" entirely when empty, never use null.
+- Never invent specific numbers: no prices, percentages, match scores, quotas or statistics. Use clearly labelled placeholders such as "[Price]" or "[Limit]" instead.
+- Never include confidence or "match" percentages.
+- This is a low-fidelity wireframe: placeholder text is expected.`;
+
+const ALLOWED_PROPS = [
+  "text",
+  "label",
+  "placeholder",
+  "ariaLabel",
+  "variant",
+  "level",
+  "direction",
+  "options",
+  "items",
+];
+
+// Drops unknown/null prop keys so harmless extras do not fail validation.
+// Unknown component TYPES are still rejected by the schema.
+function clean(node: any): any {
+  if (!node || typeof node !== "object") return node;
+  const out: any = { type: node.type };
+  if (node.props && typeof node.props === "object") {
+    const props: any = {};
+    for (const k of ALLOWED_PROPS) {
+      if (node.props[k] !== undefined && node.props[k] !== null) {
+        props[k] = node.props[k];
+      }
+    }
+    if (Object.keys(props).length) out.props = props;
+  }
+  if (Array.isArray(node.children) && node.children.length) {
+    out.children = node.children.map(clean);
+  }
+  return out;
+}
 
 export async function runStageD(input: {
   title: string;
@@ -44,12 +83,16 @@ Produce the prototype component tree.`;
         },
       });
       const text = (res.text ?? "").replace(/```json|```/g, "").trim();
-      // Strict validation: unknown types/props are rejected
-      return ProtoNodeSchema.parse(JSON.parse(text));
+      // Strict validation: unknown types are rejected, only allowlisted props survive
+      return ProtoNodeSchema.parse(clean(JSON.parse(text)));
     } catch (e) {
       lastError = e;
+      // Wait before retrying (2s, then 4s) in case the model is busy (503)
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
     }
   }
   console.error("Stage D failed:", lastError);
-  throw new Error("Could not generate the prototype. Please try again in a moment.");
+  throw new Error(
+    "Could not generate the prototype. Please try again in a moment."
+  );
 }

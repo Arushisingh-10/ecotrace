@@ -4,9 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Panel } from "@/components/panel";
 import { CreateProjectForm } from "@/components/create-project-form";
+import { DeleteProjectButton } from "@/components/delete-project-button";
 import { LocalDate } from "@/components/local-date";
-
-// export const instant = false;
 
 export default async function Home() {
   const supabase = await createClient();
@@ -45,17 +44,28 @@ export default async function Home() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {projects?.map((p) => (
-              <Link key={p.id} href={`/projects/${p.id}`}>
-                <div className="h-full rounded-xl border border-white/10 bg-[#0e1530]/80 p-4 transition hover:border-violet-500/60 hover:bg-[#131c40]">
-                  <p className="truncate font-semibold text-white">{p.name}</p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Created <LocalDate value={p.created_at} />
-                  </p>
-                  <p className="mt-3 text-sm text-slate-400">
-                    Open project →
-                  </p>
+              <div key={p.id} className="relative">
+                <Link href={`/projects/${p.id}`}>
+                  <div className="h-full rounded-xl border border-white/10 bg-[#0e1530]/80 p-4 pr-14 transition hover:border-violet-500/60 hover:bg-[#131c40]">
+                    <p className="truncate font-semibold text-white">
+                      {p.name}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Created <LocalDate value={p.created_at} />
+                    </p>
+                    <p className="mt-3 text-sm text-slate-400">
+                      Open project →
+                    </p>
+                  </div>
+                </Link>
+                <div className="absolute right-2 top-2">
+                  <DeleteProjectButton
+                    projectId={p.id}
+                    projectName={p.name}
+                    compact
+                  />
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </section>
